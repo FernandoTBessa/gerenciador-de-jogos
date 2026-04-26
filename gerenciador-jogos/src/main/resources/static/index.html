@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel do Estúdio de Jogos</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        h1, h2 { color: #333; }
+        .container { display: flex; gap: 40px; }
+        .coluna { flex: 1; }
+        
+        /* Estilos dos Cards (Leitura) */
+        .jogo-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* Estilos do Formulário (Criação) */
+        .formulario-card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px;}
+        button:hover { background-color: #218838; }
+
+        /* Estilo do Botão de Excluir */
+        .btn-excluir { background-color: #dc3545; margin-top: 10px; width: auto; font-size: 14px; padding: 5px 10px; }
+        .btn-excluir:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 Painel de Gerenciamento de Jogos</h1>
+    
+    <div class="container">
+        <!-- Coluna da Esquerda: Formulário (Criação) -->
+        <div class="coluna">
+            <div class="formulario-card">
+                <h2>Adicionar Novo Título</h2>
+                <form id="form-jogo">
+                    <label for="titulo">Título do Jogo para PC:</label>
+                    <input type="text" id="titulo" required placeholder="Ex: Projeto Alpha">
+
+                    <label for="genero">Gênero:</label>
+                    <input type="text" id="genero" required placeholder="Ex: RPG, Metroidvania">
+
+                    <label for="status">Status de Desenvolvimento:</label>
+                    <select id="status">
+                        <option value="Conceito">Conceito Inicial</option>
+                        <option value="Em Desenvolvimento">Em Desenvolvimento</option>
+                        <option value="Alpha/Beta">Fase Alpha/Beta</option>
+                        <option value="Lançado">Lançado</option>
+                    </select>
+
+                    <button type="submit">Cadastrar Jogo</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Coluna da Direita: Lista (Leitura) -->
+        <div class="coluna">
+            <h2>Portfólio</h2>
+            <div id="lista-jogos">
+                <p>Carregando jogos...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Função de Leitura (GET) ---
+        function carregarJogos() {
+            fetch('/jogos') 
+                .then(resposta => resposta.json())
+                .then(jogos => {
+                    const divLista = document.getElementById('lista-jogos');
+                    divLista.innerHTML = ''; 
+
+                    if(jogos.length === 0) {
+                        divLista.innerHTML = '<p>Nenhum jogo cadastrado ainda.</p>';
+                        return;
+                    }
+
+                    jogos.forEach(jogo => {
+                        // Adicionamos o botão de excluir e passamos o ID do jogo para a função
+                        divLista.innerHTML += `
+                            <div class="jogo-card">
+                                <strong>${jogo.titulo}</strong> <br>
+                                <small>Gênero: ${jogo.genero} | Status: ${jogo.status}</small> <br>
+                                <button class="btn-excluir" onclick="deletarJogo(${jogo.id})">🗑️ Excluir</button>
+                            </div>
+                        `;
+                    });
+                })
+                .catch(erro => console.error('Erro ao buscar jogos:', erro));
+        }
+
+        // --- Função de Criação (POST) ---
+        document.getElementById('form-jogo').addEventListener('submit', function(evento) {
+            evento.preventDefault(); 
+
+            const novoJogo = {
+                titulo: document.getElementById('titulo').value,
+                genero: document.getElementById('genero').value,
+                status: document.getElementById('status').value
+            };
+
+            fetch('/jogos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(novoJogo) 
+            })
+            .then(resposta => {
+                if(resposta.ok) {
+                    document.getElementById('form-jogo').reset(); 
+                    carregarJogos(); 
+                }
+            });
+        });
+
+        // --- Função de Exclusão (DELETE) ---
+        function deletarJogo(id) {
+            // Um alerta simples para evitar exclusões sem querer
+            if(confirm("Tem certeza que deseja excluir este jogo da sua biblioteca?")) {
+                
+                // Faz a requisição DELETE passando o ID na URL (ex: /jogos/1)
+                fetch(`/jogos/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(async resposta => {
+                    if(resposta.ok) {
+                        carregarJogos(); 
+                    } else {
+                        // Captura a mensagem em texto que o Java enviou no .body()
+                        const mensagemErro = await resposta.text();
+                        alert(mensagemErro);
+                    }
+                })
+            }
+        }
+
+        // Inicia carregando os jogos assim que a página abre
+        carregarJogos();
+    </script>
+</body>
+</html>
